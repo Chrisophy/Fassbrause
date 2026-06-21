@@ -68,8 +68,8 @@ def build_news_json():
             print(f" -> Fehler beim Abruf von {category_name}: {e}")
             continue
         
-        # Limit auf max 40 Artikel pro Kategorie
-        for entry in feed.entries[:40]:
+        # Limit auf max 50 Artikel pro Kategorie
+        for entry in feed.entries[:50]:
             link = entry.get("link", "")
             if not link or link in seen_links:
                 continue
