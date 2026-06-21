@@ -2,16 +2,12 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/30 * * * *' # Dein Intervall
   workflow_dispatch:
 
-# 1. SCHUTZ: Verhindert, dass sich parallele Runs gegenseitig blockieren
 concurrency:
-  group: news-updater-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-permissions:
-  contents: write
 
 jobs:
   update-news:
