@@ -2,10 +2,9 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten vollautomatisch
-  workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck auf GitHub
+    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten (mit GitHub-typischer Verzögerung)
+  workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck
 
-# SCHLÜSSEL ZUM ERFOLG: Schreibrechte für die Action aktivieren
 permissions:
   contents: write
 
@@ -29,10 +28,8 @@ jobs:
     - name: Scraper ausführen
       run: python fetch_news.py
 
-    - name: Änderungen zurückschreiben
-      run: |
-        git config --global user.name 'GitHub Automation'
-        git config --global user.email 'actions@github.com'
-        git add news.json
-        # Fügt [skip ci] hinzu, damit kein automatischer Folge-Build (wie Pages) ausgelöst wird
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update news.json via GitHub Action [skip ci]" && git push)
+    - name: Änderungen automatisch committen
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Update news.json via GitHub Action [skip ci]"
+        file_pattern: 'news.json'
