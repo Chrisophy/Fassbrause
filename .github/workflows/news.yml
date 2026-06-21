@@ -2,8 +2,13 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten (mit GitHub-typischer Verzögerung)
-  workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+# 1. SCHUTZ: Verhindert, dass sich parallele Runs gegenseitig blockieren
+concurrency:
+  group: news-updater-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -14,6 +19,8 @@ jobs:
     steps:
     - name: Code auschecken
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Wichtig: Holt die Git-Historie für saubere Updates
 
     - name: Python initialisieren
       uses: actions/setup-python@v5
@@ -27,6 +34,13 @@ jobs:
 
     - name: Scraper ausführen
       run: python fetch_news.py
+
+    # 2. SCHUTZ: Vor dem Commit den allerneuesten Stand vom Server holen
+    - name: Letzte Änderungen vom Server abholen
+      run: |
+        git config --global user.name 'GitHub Automation'
+        git config --global user.email 'actions@github.com'
+        git pull --rebase origin main
 
     - name: Änderungen automatisch committen
       uses: stefanzweifel/git-auto-commit-action@v5
