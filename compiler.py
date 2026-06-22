@@ -287,7 +287,7 @@ def build_apk(app_name, package_name, start_url, html_source_dir=None):
         print(f"-> FEHLER: Gradle-Build ist mit Code {e.returncode} fehlgeschlagen.")
         exit(1)
 
-
+# HIER WERDEN APP NAME, PAKETNAME, URL, UND ICON (.PAGINA) EINGETRAGEN:
 if __name__ == "__main__":
     build_apk(
         app_name="[GEZ] KiNO",
