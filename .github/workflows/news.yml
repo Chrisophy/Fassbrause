@@ -2,15 +2,10 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten (mit GitHub-typischer Verzögerung)
+    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten vollautomatisch
   workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck auf GitHub
 
-# Verhindert, dass parallele oder überlappende Runs sich gegenseitig blockieren
-concurrency:
-  group: news-updater-${{ github.ref }}
-  cancel-in-progress: true
-
-# Schreibrechte für die Action aktivieren, um die news.json hochzuladen
+# SCHLÜSSEL ZUM ERFOLG: Schreibrechte für die Action aktivieren
 permissions:
   contents: write
 
@@ -20,8 +15,6 @@ jobs:
     steps:
     - name: Code auschecken
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0     # Wichtig: Holt die gesamte Git-Historie für einen sauberen Rebase
 
     - name: Python initialisieren
       uses: actions/setup-python@v5
@@ -36,23 +29,10 @@ jobs:
     - name: Scraper ausführen
       run: python fetch_news.py
 
-    - name: Änderungen sicher committen und pushen
+    - name: Änderungen zurückschreiben
       run: |
         git config --global user.name 'GitHub Automation'
         git config --global user.email 'actions@github.com'
-        
-        # Prüfen, ob dein Python-Skript die news.json verändert hat
-        if [ -n "$(git status --porcelain news.json)" ]; then
-          echo "Änderungen an news.json erkannt. Erstelle lokalen Commit..."
-          git add news.json
-          git commit -m "Update news.json via GitHub Action [skip ci]"
-          
-          echo "Hole neueste Remote-Änderungen ab und setze Commit oben drauf (Rebase)..."
-          git fetch --unshallow || git fetch --all
-          git pull --rebase origin main
-          
-          echo "Pushe den sauberen Stand zurück zu GitHub..."
-          git push origin main
-        else
-          echo "Keine Änderungen an der news.json festgestellt. Überspringe Push."
-        fi
+        git add news.json
+        # Fügt [skip ci] hinzu, damit kein automatischer Folge-Build (wie Pages) ausgelöst wird
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update news.json via GitHub Action [skip ci]" && git push)
