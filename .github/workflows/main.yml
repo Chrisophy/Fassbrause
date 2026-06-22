@@ -2,7 +2,7 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '33 * * * *'
+    - cron: '34 * * * *'
   workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck auf GitHub
 
 # SCHLÜSSEL ZUM ERFOLG: Schreibrechte für die Action aktivieren
@@ -35,4 +35,4 @@ jobs:
         git config --global user.email 'actions@github.com'
         git add news.json
         # Prüft auf Änderungen. Wenn ja: Commit -> remote Änderungen holen -> Push
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update news.json via GitHub Action" && git pull --rebase origin main && git push)
+        #git diff --quiet && git diff --staged --quiet || (git commit -m "Update news.json via GitHub Action" && git pull --rebase origin main && git push)
