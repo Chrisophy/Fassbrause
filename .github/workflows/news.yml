@@ -2,10 +2,13 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten vollautomatisch
-  workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck auf GitHub
+    - cron: '*/30 * * * *'  # Läuft alle 30 Minuten
+  workflow_dispatch:       # Manueller Start möglich
 
-# SCHLÜSSEL ZUM ERFOLG: Schreibrechte für die Action aktivieren
+concurrency:
+  group: news-updater-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -14,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Code auschecken
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4  # Normaler Checkout reicht jetzt völlig aus
 
     - name: Python initialisieren
       uses: actions/setup-python@v5
@@ -29,10 +32,34 @@ jobs:
     - name: Scraper ausführen
       run: python fetch_news.py
 
-    - name: Änderungen zurückschreiben
+    - name: Änderungen sicher committen und pushen
       run: |
         git config --global user.name 'GitHub Automation'
         git config --global user.email 'actions@github.com'
+        
+        # 1. Prüfen, ob sich die news.json überhaupt verändert hat
+        if git diff --quiet news.json; then
+          echo "Keine Änderungen an der news.json festgestellt. Überspringe Push."
+          exit 0
+        fi
+        
+        echo "Änderungen an news.json erkannt!"
+        
+        # 2. Die neue news.json temporär AUẞERHALB des Git-Verzeichnisses sichern
+        cp news.json /tmp/news.json.bak
+        
+        # 3. Arbeitsverzeichnis radikal säubern (entfernt __pycache__, temporäre Skript-Reste etc.)
+        git reset --hard HEAD
+        git clean -fd
+        
+        # 4. Den absolut neuesten Stand von GitHub holen und lokalen Branch festlegen
+        git fetch origin main
+        git checkout -B main origin/main
+        
+        # 5. Die gesicherte news.json wieder zurückholen
+        cp /tmp/news.json.bak news.json
+        
+        # 6. Committen und direkt pushen (ohne Rebase-Gefahr, da wir exakt auf origin/main stehen)
         git add news.json
-        # Fügt [skip ci] hinzu, damit kein automatischer Folge-Build (wie Pages) ausgelöst wird
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update news.json via GitHub Action [skip ci]" && git push)
+        git commit -m "Update news.json via GitHub Action [skip ci]"
+        git push origin main
