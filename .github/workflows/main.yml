@@ -2,7 +2,7 @@ name: Automatische News-Aktualisierung
 
 on:
   schedule:
-    - cron: '12,42 * * * *'
+    - cron: '33 * * * *'
   workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck auf GitHub
 
 # SCHLÜSSEL ZUM ERFOLG: Schreibrechte für die Action aktivieren
