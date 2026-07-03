@@ -113,7 +113,7 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
     with open(os.path.join(res_val_dir, "strings.xml"), "w", encoding="utf-8") as f:
         f.write(strings.strip())
         
-    # 6. MainActivity.java (DownloadListener implementiert!)
+    # 6. MainActivity.java (Mit dauerhaftem Fullscreen / Edge-to-Edge)
     main_activity = f"""package {package_name};
 
     import android.app.DownloadManager;
@@ -122,6 +122,7 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
     import android.os.Environment;
     import android.view.View;
     import android.view.ViewGroup;
+    import android.view.Window;
     import android.webkit.CookieManager;
     import android.webkit.DownloadListener;
     import android.webkit.URLUtil;
@@ -132,6 +133,9 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
     import android.widget.FrameLayout;
     import android.widget.Toast;
     import androidx.appcompat.app.AppCompatActivity;
+    import androidx.core.view.WindowCompat;
+    import androidx.core.view.WindowInsetsCompat;
+    import androidx.core.view.WindowInsetsControllerCompat;
 
     public class MainActivity extends AppCompatActivity {{
         private WebView webView;
@@ -142,6 +146,9 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
         @Override
         protected void onCreate(Bundle savedInstanceState) {{
             super.onCreate(savedInstanceState);
+            
+            // Aktiviert den Fullscreen-Modus direkt beim Start
+            hideSystemUI();
             
             FrameLayout mainLayout = new FrameLayout(this);
             
@@ -163,7 +170,6 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
             
             webView.setWebViewClient(new WebViewClient());
             
-            // Vollbild-Support
             webView.setWebChromeClient(new WebChromeClient() {{
                 @Override
                 public void onShowCustomView(View view, CustomViewCallback callback) {{
@@ -176,12 +182,7 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
                             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                     customViewContainer.setVisibility(View.VISIBLE);
                     customViewCallback = callback;
-                    
-                    getWindow().getDecorView().setSystemUiVisibility(
-                            View.SYSTEM_UI_FLAG_FULLSCREEN |
-                            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    );
+                    hideSystemUI();
                 }}
 
                 @Override
@@ -193,30 +194,24 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
                     if (customViewCallback != null) {{
                         customViewCallback.onCustomViewHidden();
                     }}
-                    getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+                    hideSystemUI();
                 }}
             }});
 
-            // HIER NEU: Download-Handling über den Android DownloadManager
             webView.setDownloadListener(new DownloadListener() {{
                 @Override
                 public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {{
                     try {{
                         DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
                         request.setMimeType(mimetype);
-                        
-                        // Cookies mitgeben, falls die Session geschützt ist
                         String cookies = CookieManager.getInstance().getCookie(url);
                         request.addRequestHeader("cookie", cookies);
                         request.addRequestHeader("User-Agent", userAgent);
                         
-                        // Titel der Datei erraten & Notification einrichten
                         String filename = URLUtil.guessFileName(url, contentDisposition, mimetype);
                         request.setTitle(filename);
                         request.setDescription("Datei wird heruntergeladen...");
                         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                        
-                        // Ziel: Öffentlicher "Download"-Ordner auf dem Gerät
                         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
                         
                         DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
@@ -231,6 +226,28 @@ def create_android_boilerplate(build_dir, app_name, package_name, start_url):
             }});
             
             webView.loadUrl("{start_url}");
+        }}
+
+        // Sorgt dafür, dass die Leisten unsichtbar bleiben, wenn der Nutzer zurück zur App wechselt
+        @Override
+        public void onWindowFocusChanged(boolean hasFocus) {{
+            super.onWindowFocusChanged(hasFocus);
+            if (hasFocus) {{
+                hideSystemUI();
+            }}
+        }}
+
+        // Zentrale Methode zum Verstecken von Status- und Navigationsleiste
+        private void hideSystemUI() {{
+            Window window = getWindow();
+            WindowCompat.setDecorFitsSystemWindows(window, false);
+            WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(window, window.getDecorView());
+            
+            // Versteckt sowohl Status Bar als auch Navigation Bar
+            controller.hide(WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.navigationBars());
+            
+            // "Sticky Immersive": Wischen blendet die Leisten kurz ein, sie verschwinden aber automatisch wieder
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         }}
 
         @Override
