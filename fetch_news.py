@@ -53,7 +53,6 @@ def get_article_text(url, source_type):
                         break
 
         elif source_type == "ÖRR":
-            # Spezifische HTML-Selektoren für Tagesschau-Artikel
             paragraphs = soup.select('article p.textabsatz, .m-articlebody p, .article p')
             for p in paragraphs:
                 text = p.get_text(" ", strip=True)
@@ -63,7 +62,6 @@ def get_article_text(url, source_type):
         if not article_text:
             return f"Volltext konnte nicht automatisch geladen werden. Bitte nutze den Link unten, um direkt zu {source_type} zu gelangen."
 
-        # Duplikate entfernen und Text zusammensetzen
         cleaned = []
         for line in article_text:
             if line not in cleaned:
@@ -92,13 +90,18 @@ def build_news_json():
             print(f" -> Fehler beim Abruf von {category_name}: {e}")
             continue
 
-        for entry in feed.entries[:10]:  # Limit leicht reduziert, um Laufzeit klein zu halten
+        for entry in feed.entries[:15]:
             link = entry.get("link", "")
-            if not link or link in seen_links:
-                continue
-
             title = entry.get("title", "Ohne Titel")
             summary = entry.get("summary", "")
+
+            # --- BILDplus Filter ---
+            if "bildplus" in title.lower() or "bildplus" in link.lower():
+                print(f" -> Überspringe BILDplus: {title[:35]}...")
+                continue
+
+            if not link or link in seen_links:
+                continue
 
             print(f" -> Scrape BILD: {title[:35]}...")
             full_text = get_article_text(link, source_type="BILD")
@@ -111,7 +114,7 @@ def build_news_json():
                 "thumb": "https://www.bild.de/favicon.ico",
                 "rating": "BILD",
                 "channel": "BILD.de",
-                "source": "BILD",  # Unterscheidungsmerkmal
+                "source": "BILD",
                 "year": "Heute",
                 "genres_list": [category_name],
                 "category": category_name
@@ -142,7 +145,6 @@ def build_news_json():
             title = entry.get("title", "Ohne Titel")
             summary = entry.get("summary", "")
 
-            # HTML-Tags aus Tagesschau-RSS-Descriptions entfernen
             if summary:
                 summary = BeautifulSoup(summary, "html.parser").get_text(strip=True)
 
@@ -157,7 +159,7 @@ def build_news_json():
                 "thumb": "https://www.tagesschau.de/favicon.ico",
                 "rating": "ÖRR",
                 "channel": "Tagesschau",
-                "source": "ÖRR",  # Unterscheidungsmerkmal
+                "source": "ÖRR",
                 "year": "Heute",
                 "genres_list": [category_name],
                 "category": category_name
