@@ -111,7 +111,7 @@ def build_news_json():
             print(f" -> Fehler beim Abruf von {category_name}: {e}")
             continue
 
-        for entry in feed.entries[:15]:
+        for entry in feed.entries[:20]:
             link = entry.get("link", "")
             title = entry.get("title", "Ohne Titel")
             summary = entry.get("summary", "")
@@ -164,7 +164,7 @@ def build_news_json():
             print(f" -> Fehler beim Abruf von {category_name}: {e}")
             continue
 
-        for entry in feed.entries[:15]:
+        for entry in feed.entries[:20]:
             link = entry.get("link", "")
             if not link or link in seen_links:
                 continue
