@@ -3,11 +3,14 @@ name: Automatische News-Aktualisierung
 on:
   schedule:
     - cron: '34,4 * * * *'
-  workflow_dispatch:       # Ermöglicht manuellen Start per Knopfdruck auf GitHub
+  workflow_dispatch:
 
-# SCHLÜSSEL ZUM ERFOLG: Schreibrechte für die Action aktivieren
 permissions:
   contents: write
+
+concurrency:
+  group: automatic-news-update-main
+  cancel-in-progress: false
 
 jobs:
   update-news:
@@ -15,6 +18,8 @@ jobs:
     steps:
     - name: Code auschecken
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Python initialisieren
       uses: actions/setup-python@v5
@@ -31,14 +36,29 @@ jobs:
 
     - name: Änderungen zurückschreiben
       run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        set -euo pipefail
+        git config user.name 'github-actions[bot]'
+        git config user.email 'github-actions[bot@users.noreply.github.com'
         git add news.json
         
-        # Prüfen, ob wirklich Änderungen vorliegen
         if git diff --staged --quiet; then
           echo "Keine Änderungen an news.json gefunden. Überspringe Commit."
-        else
-          git commit -m "Automatisches Update der news.json"
-          git push
+          exit 0
         fi
+        
+        git commit -m "Automatisches Update der news.json"
+        
+        # Sicherstellen, dass der Branch aktuell ist und Konflikte/Race Conditions abgefangen werden
+        for attempt in 1 2 3 4 5; do
+          git fetch origin main || true
+          git rebase origin/main || true
+          if git push origin HEAD:main; then
+            echo "Änderungen erfolgreich veröffentlicht."
+            exit 0
+          fi
+          echo "Push fehlgeschlagen, Versuch $attempt von 5..."
+          sleep 3
+        done
+        
+        echo "Push nach 5 Versuchen fehlgeschlagen."
+        exit 1
